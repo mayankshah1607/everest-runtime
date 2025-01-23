@@ -50,11 +50,19 @@ func (p *databaseCluster) Observe(ctx context.Context, name, namespace string) (
 	return v1alpha1.DatabaseClusterStatus{}, nil
 }
 
-func (p *databaseCluster) HandleDelete(ctx context.Context, name, namespace string) (bool, error) {
+func (p *databaseCluster) HandleDelete(ctx context.Context, db *v1alpha1.DatabaseCluster) (bool, error) {
 	pxc := &pxcv1.PerconaXtraDBCluster{}
-	if err := p.Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, pxc); err != nil {
+	if err := p.Get(ctx, client.ObjectKey{Namespace: db.GetName(), Name: db.GetNamespace()}, pxc); err != nil {
 		return false, client.IgnoreNotFound(err)
 	}
 	// TODO: handle finalizers in the pxc object.
 	return true, nil
+}
+
+func (p *databaseCluster) HandleRestart(ctx context.Context, db *v1alpha1.DatabaseCluster) error {
+	return nil
+}
+
+func (p *databaseCluster) applyEngine(pxc *pxcv1.PerconaXtraDBCluster, db *v1alpha1.DatabaseCluster) error {
+	return nil
 }

@@ -9,6 +9,7 @@ type PXC struct {
 	runtime.DatabaseClusterController
 	runtime.DatabaseClusterBackupController
 	runtime.DatabaseClusterRestoreController
+	runtime.DatabaseEngine
 }
 
 // New returns a new PXC provider.
@@ -17,5 +18,6 @@ func New(c client.Client) *PXC {
 		DatabaseClusterController:        &databaseCluster{Client: c},
 		DatabaseClusterBackupController:  &databaseClusterBackup{Client: c},
 		DatabaseClusterRestoreController: &databaseClusterRestore{Client: c},
+		DatabaseEngine:                   &engine{Client: c, name: "pxc"},
 	}
 }

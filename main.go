@@ -25,6 +25,7 @@ func main() {
 		DatabaseClusterController:        pxcProv.DatabaseClusterController,
 		DatabaseClusterBackupController:  pxcProv.DatabaseClusterBackupController,
 		DatabaseClusterRestoreController: pxcProv.DatabaseClusterRestoreController,
+		DatabaseEngine:                   pxcProv.DatabaseEngine,
 	}
 
 	if err := c.Start(); err != nil {

@@ -12,19 +12,19 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
-type databaseClusterRestore struct {
+type databaseClusterBackup struct {
 	client.Client
 }
 
-var _ runtime.DatabaseClusterRestoreController = (*databaseClusterRestore)(nil)
+var _ runtime.DatabaseClusterBackupController = (*databaseClusterBackup)(nil)
 
-func (p *databaseClusterRestore) RegisterSources(b *builder.Builder) error {
-	b.Owns(&pxcv1.PerconaXtraDBClusterRestore{})
+func (p *databaseClusterBackup) RegisterSources(b *builder.Builder) error {
+	b.Owns(&pxcv1.PerconaXtraDBClusterBackup{})
 	return nil
 }
 
-func (p *databaseClusterRestore) Ensure(ctx context.Context, db *v1alpha1.DatabaseClusterRestore) error {
-	pxc := &pxcv1.PerconaXtraDBClusterRestore{
+func (p *databaseClusterBackup) Ensure(ctx context.Context, db *v1alpha1.DatabaseClusterBackup) error {
+	pxc := &pxcv1.PerconaXtraDBClusterBackup{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      db.GetName(),
 			Namespace: db.GetNamespace(),
@@ -32,7 +32,7 @@ func (p *databaseClusterRestore) Ensure(ctx context.Context, db *v1alpha1.Databa
 	}
 
 	if _, err := controllerutil.CreateOrUpdate(ctx, p.Client, pxc, func() error {
-		// TODO: build a pxc-backup object from the DatabaseClusterRestore object
+		// TODO: build a pxc-backup object from the DatabaseClusterBackup object
 		return nil
 	}); err != nil {
 		return err
@@ -40,19 +40,19 @@ func (p *databaseClusterRestore) Ensure(ctx context.Context, db *v1alpha1.Databa
 	return nil
 }
 
-func (p *databaseClusterRestore) Observe(ctx context.Context, name, namespace string) (v1alpha1.DatabaseClusterRestoreStatus, error) {
-	pxc := &pxcv1.PerconaXtraDBClusterRestore{}
+func (p *databaseClusterBackup) Observe(ctx context.Context, name, namespace string) (v1alpha1.DatabaseClusterBackupStatus, error) {
+	pxc := &pxcv1.PerconaXtraDBClusterBackup{}
 	if err := p.Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, pxc); err != nil {
-		return v1alpha1.DatabaseClusterRestoreStatus{}, err
+		return v1alpha1.DatabaseClusterBackupStatus{}, err
 	}
 
 	// TODO: build a DatabaseClusterStatus object from the PXC object state.
-	return v1alpha1.DatabaseClusterRestoreStatus{}, nil
+	return v1alpha1.DatabaseClusterBackupStatus{}, nil
 }
 
-func (p *databaseClusterRestore) HandleDelete(ctx context.Context, name, namespace string) (bool, error) {
-	pxc := &pxcv1.PerconaXtraDBClusterRestore{}
-	if err := p.Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, pxc); err != nil {
+func (p *databaseClusterBackup) HandleDelete(ctx context.Context, bkp *v1alpha1.DatabaseClusterBackup) (bool, error) {
+	pxc := &pxcv1.PerconaXtraDBClusterBackup{}
+	if err := p.Get(ctx, client.ObjectKey{Namespace: bkp.GetNamespace(), Name: bkp.GetName()}, pxc); err != nil {
 		return false, client.IgnoreNotFound(err)
 	}
 	// TODO: handle finalizers in the pxc object.
