@@ -3,32 +3,42 @@ package databasecluster
 import (
 	"context"
 
-	"github.com/mayankshah1607/everest-runtime/pkg/runtime"
+	"github.com/mayankshah1607/everest-runtime/pkg/controller"
 	everestv1alpha1 "github.com/percona/everest-operator/api/v1alpha1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
-	restartAnnotationKey = "everest.percona.com/restart"
+	// RestartAnnotationKey is the annotation key that triggers a restart of the database cluster.
+	RestartAnnotationKey = "everest.percona.com/restart"
 )
 
+// Reconciler reconciles a DatabaseCluster.
 type Reconciler struct {
-	Client             client.Client
-	Controller         runtime.DatabaseClusterController
+	client.Client
+	Controller         controller.DatabaseClusterController
 	DatabaseEngineName string
 }
 
 func (r *Reconciler) Setup(mgr ctrl.Manager) error {
-	b := ctrl.NewControllerManagedBy(mgr).
+	c, err := ctrl.NewControllerManagedBy(mgr).
 		Named("DatabaseCluster").
-		For(&everestv1alpha1.DatabaseCluster{})
-
-	if err := r.Controller.RegisterSources(b); err != nil {
+		For(&everestv1alpha1.DatabaseCluster{}).
+		Build(r)
+	if err != nil {
 		return err
 	}
 
-	return b.Complete(r)
+	sources, err := r.Controller.GetSources(mgr)
+	if err != nil {
+		return err
+	}
+
+	for _, src := range sources {
+		c.Watch(src)
+	}
+	return nil
 }
 
 func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
@@ -46,7 +56,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	log.Info("Reconciling DatabaseCluster", "req", req)
 
 	if !db.GetDeletionTimestamp().IsZero() {
-		ok, err := r.Controller.HandleDelete(ctx, db)
+		ok, err := r.Controller.HandleDelete(ctx, r, db)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
@@ -61,11 +71,11 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		return ctrl.Result{}, err
 	}
 
-	if err := r.Controller.Ensure(ctx, db); err != nil {
+	if err := r.Controller.Reconcile(ctx, r, db); err != nil {
 		return ctrl.Result{}, err
 	}
 
-	status, err := r.Controller.Observe(ctx, db.Name, db.Namespace)
+	status, err := r.Controller.Observe(ctx, r, db)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -79,8 +89,8 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 
 func (r *Reconciler) handleRestart(ctx context.Context, db *everestv1alpha1.DatabaseCluster) error {
 	annotations := db.GetAnnotations()
-	if _, required := annotations[restartAnnotationKey]; !required {
+	if _, required := annotations[RestartAnnotationKey]; !required {
 		return nil
 	}
-	return r.Controller.HandleRestart(ctx, db)
+	return r.Controller.Restart(ctx, r, db)
 }

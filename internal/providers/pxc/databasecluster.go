@@ -3,66 +3,36 @@ package pxc
 import (
 	"context"
 
-	"github.com/mayankshah1607/everest-runtime/pkg/runtime"
+	"github.com/mayankshah1607/everest-runtime/pkg/controller"
 	"github.com/percona/everest-operator/api/v1alpha1"
-	pxcv1 "github.com/percona/percona-xtradb-cluster-operator/pkg/apis/pxc/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sigs.k8s.io/controller-runtime/pkg/builder"
+	everestv1alpha1 "github.com/percona/everest-operator/api/v1alpha1"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
 type databaseCluster struct {
 	client.Client
 }
 
-var _ runtime.DatabaseClusterController = (*databaseCluster)(nil)
+var _ controller.DatabaseClusterController = (*databaseCluster)(nil)
 
-func (p *databaseCluster) RegisterSources(b *builder.Builder) error {
-	b.Owns(&pxcv1.PerconaXtraDBCluster{})
+func (p *databaseCluster) GetSources(ctrl.Manager) ([]source.Source, error) {
+	return []source.Source{}, nil
+}
+
+func (p *databaseCluster) Reconcile(ctx context.Context, c client.Client, db *everestv1alpha1.DatabaseCluster) error {
 	return nil
 }
 
-func (p *databaseCluster) Ensure(ctx context.Context, db *v1alpha1.DatabaseCluster) error {
-	pxc := &pxcv1.PerconaXtraDBCluster{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      db.GetName(),
-			Namespace: db.GetNamespace(),
-		},
-	}
-
-	if _, err := controllerutil.CreateOrUpdate(ctx, p.Client, pxc, func() error {
-		// TODO: build a PXC object from the DatabaseCluster object
-		return nil
-	}); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (p *databaseCluster) Observe(ctx context.Context, name, namespace string) (v1alpha1.DatabaseClusterStatus, error) {
-	pxc := &pxcv1.PerconaXtraDBCluster{}
-	if err := p.Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, pxc); err != nil {
-		return v1alpha1.DatabaseClusterStatus{}, err
-	}
-
-	// TODO: build a DatabaseClusterStatus object from the PXC object state.
+func (p *databaseCluster) Observe(ctx context.Context, c client.Client, db *everestv1alpha1.DatabaseCluster) (everestv1alpha1.DatabaseClusterStatus, error) {
 	return v1alpha1.DatabaseClusterStatus{}, nil
 }
 
-func (p *databaseCluster) HandleDelete(ctx context.Context, db *v1alpha1.DatabaseCluster) (bool, error) {
-	pxc := &pxcv1.PerconaXtraDBCluster{}
-	if err := p.Get(ctx, client.ObjectKey{Namespace: db.GetName(), Name: db.GetNamespace()}, pxc); err != nil {
-		return false, client.IgnoreNotFound(err)
-	}
-	// TODO: handle finalizers in the pxc object.
+func (p *databaseCluster) HandleDelete(ctx context.Context, c client.Client, db *everestv1alpha1.DatabaseCluster) (bool, error) {
 	return true, nil
 }
 
-func (p *databaseCluster) HandleRestart(ctx context.Context, db *v1alpha1.DatabaseCluster) error {
-	return nil
-}
-
-func (p *databaseCluster) applyEngine(pxc *pxcv1.PerconaXtraDBCluster, db *v1alpha1.DatabaseCluster) error {
+func (p *databaseCluster) Restart(ctx context.Context, c client.Client, db *everestv1alpha1.DatabaseCluster) error {
 	return nil
 }

@@ -2,52 +2,54 @@ package controller
 
 import (
 	"context"
-	"fmt"
 
-	"github.com/mayankshah1607/everest-runtime/pkg/controller/databasecluster"
-	"github.com/mayankshah1607/everest-runtime/pkg/runtime"
+	everestv1alpha1 "github.com/percona/everest-operator/api/v1alpha1"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
-type Controller struct {
-	Manager ctrl.Manager
-
-	DatabaseClusterController        runtime.DatabaseClusterController
-	DatabaseClusterBackupController  runtime.DatabaseClusterBackupController
-	DatabaseClusterRestoreController runtime.DatabaseClusterRestoreController
-	DatabaseEngine                   runtime.DatabaseEngine
+type DatabaseClusterController interface {
+	// GetSources returns the event sources that the reconciler should watch.
+	GetSources(ctrl.Manager) ([]source.Source, error)
+	// Reconcile reconciles the provided DatabaseCluster object.
+	Reconcile(context.Context, client.Client, *everestv1alpha1.DatabaseCluster) error
+	// HandleDelete handles the deletion of the provided DatabaseCluster object.
+	// This is useful to perform cleanup operations and resolving any finalizers that may be set.
+	// Clients that don't require any cleanup can provide a no-op implementation.
+	// Returns a boolean indicating if the object was deleted, and an error if any occurred.
+	HandleDelete(context.Context, client.Client, *everestv1alpha1.DatabaseCluster) (bool, error)
+	// Restart contains the logic for restarting the DatabaseCluster.
+	// The implementation is responsible for tracking the state of the restart.
+	Restart(context.Context, client.Client, *everestv1alpha1.DatabaseCluster) error
+	// Observe the state of the DatabaseCluster and return a DatabaseClusterStatus object.
+	Observe(context.Context, client.Client, *everestv1alpha1.DatabaseCluster) (everestv1alpha1.DatabaseClusterStatus, error)
 }
 
-func (c *Controller) Start() error {
-	if err := c.ensureDatabaseEngine(); err != nil {
-		return err
-	}
-	if err := c.initControllers(context.Background()); err != nil {
-		return err
-	}
-	return c.Manager.Start(ctrl.SetupSignalHandler())
+type DatabaseClusterBackupController interface {
+	// GetSources returns the event sources that the reconciler should watch.
+	GetSources(ctrl.Manager) ([]source.Source, error)
+	// Reconcile reconciles the provided DatabaseClusterBackup object.
+	Reconcile(context.Context, client.Client, *everestv1alpha1.DatabaseClusterBackup) error
+	// HandleDelete handles the deletion of the provided DatabaseClusterBackup object.
+	// This is useful to perform cleanup operations and resolving any finalizers that may be set.
+	// Clients that don't require any cleanup can provide a no-op implementation.
+	// Returns a boolean indicating if the object was deleted, and an error if any occurred.
+	HandleDelete(context.Context, client.Client, *everestv1alpha1.DatabaseClusterBackup) (bool, error)
+	// Observe the state of the DatabaseCluster and return a DatabaseClusterStatus object.
+	Observe(context.Context, client.Client, *everestv1alpha1.DatabaseClusterBackup) (everestv1alpha1.DatabaseClusterBackupStatus, error)
 }
 
-func (c *Controller) initControllers(ctx context.Context) error {
-	targetEngine := c.DatabaseEngine.GetName()
-	if targetEngine == "" {
-		return fmt.Errorf("result of DatabaseEngine.GetName() is empty")
-	}
-	if c.DatabaseClusterController != nil {
-		if err := (&databasecluster.Reconciler{
-			Client:             c.Manager.GetClient(),
-			Controller:         c.DatabaseClusterController,
-			DatabaseEngineName: targetEngine,
-		}).Setup(c.Manager); err != nil {
-			return err
-		}
-	}
-
-	// TODO: DBC and DBB controllers
-	return nil
-}
-
-func (c *Controller) ensureDatabaseEngine() error {
-	// TODO: create a DatabaseEngine object here.
-	return nil
+type DatabaseClusterRestoreController interface {
+	// GetSources returns the event sources that the reconciler should watch.
+	GetSources(ctrl.Manager) ([]source.Source, error)
+	// Reconcile reconciles the provided DatabaseClusterRestore object.
+	Reconcile(context.Context, client.Client, *everestv1alpha1.DatabaseClusterRestore) error
+	// HandleDelete handles the deletion of the provided DatabaseClusterRestore object.
+	// This is useful to perform cleanup operations and resolving any finalizers that may be set.
+	// Clients that don't require any cleanup can provide a no-op implementation.
+	// Returns a boolean indicating if the object was deleted, and an error if any occurred.
+	HandleDelete(context.Context, client.Client, *everestv1alpha1.DatabaseClusterRestore) (bool, error)
+	// Observe the state of the DatabaseCluster and return a DatabaseClusterStatus object.
+	Observe(context.Context, client.Client, *everestv1alpha1.DatabaseClusterRestore) (everestv1alpha1.DatabaseClusterRestoreStatus, error)
 }
