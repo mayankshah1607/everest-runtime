@@ -26,6 +26,7 @@ func (r *Reconciler) Setup(mgr ctrl.Manager) error {
 		Named("DatabaseCluster").
 		For(&everestv1alpha1.DatabaseCluster{}).
 		Build(r)
+
 	if err != nil {
 		return err
 	}

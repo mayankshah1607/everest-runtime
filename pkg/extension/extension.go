@@ -10,4 +10,6 @@ type Extension struct {
 	Version string `json:"version"`
 	// Description of the extension.
 	Description string `json:"description"`
+	// Capabilities of the extension (e.g, backups, restores, sharding, etc.).
+	Capabilities []string `json:"capabilities"`
 }

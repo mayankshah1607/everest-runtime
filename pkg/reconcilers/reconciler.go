@@ -29,6 +29,7 @@ func (c *Reconciler) initControllers(ctx context.Context) error {
 	if targetEngine == "" {
 		return fmt.Errorf("extension.Name cannot be empty")
 	}
+
 	if c.DatabaseClusterController != nil {
 		if err := (&databasecluster.Reconciler{
 			Client:             c.Manager.GetClient(),

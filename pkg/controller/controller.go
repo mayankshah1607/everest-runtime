@@ -24,6 +24,10 @@ type DatabaseClusterController interface {
 	Restart(context.Context, client.Client, *everestv1alpha1.DatabaseCluster) error
 	// Observe the state of the DatabaseCluster and return a DatabaseClusterStatus object.
 	Observe(context.Context, client.Client, *everestv1alpha1.DatabaseCluster) (everestv1alpha1.DatabaseClusterStatus, error)
+
+	// Create(context.Context, client.Client, *everestv1alpha1.DatabaseCluster) error
+	// Update(context.Context, client.Client, *everestv1alpha1.DatabaseCluster) error
+	// Delete(context.Context, client.Client, *everestv1alpha1.DatabaseCluster) error
 }
 
 type DatabaseClusterBackupController interface {
