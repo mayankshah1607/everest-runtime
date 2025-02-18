@@ -112,7 +112,8 @@ type ComponentSpec struct {
 
 	// Internal field, this is not provided in the CRD.
 	// This field is automatically populated during runtime.
-	// Contains aggregated pod spec for this componen.
+	// This contains the combined information about the component pod
+	// from the defaults in the DatabaseClusterDefinition.
 	PodSpec *ComponentPodSpec `json:"-,omitempty"`
 }
 
