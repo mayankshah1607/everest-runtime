@@ -17,19 +17,35 @@ spec:
           container:
             image: "clickhouse/clickhouse-server:23.8"
             name: clickhouse
+      clickhouse-keeper:
+        openAPIV3Schema: {}
+        defaults:
+          container:
+            image: "clickhouse/clickhouse-keeper:23.8"
+            name: clickhouse-keeper
 ---
 apiVersion: everest.percona.com/v2alpha1
 kind: DatabaseCluster
 metadata:
-  name: clickhouse-test-cluster
+  name: my-cool-ch
 spec:
   plugin: clickhouse
   global: {}
   components:
-  - name: chc
+  - name: chi
     type: clickhouse
     replicas: 1
     version: "23.8" # NOOP for now
     storage:
       size: 1Gi
-
+    customSpec:
+      zookeeper:
+        nodes:
+          - host: keeper-my-cool-ch-keeper
+            port: 2181
+  - name: chk
+    type: clickhouse-keeper
+    replicas: 1
+    version: "23.8" # NOOP for now
+    storage:
+      size: 1Gi

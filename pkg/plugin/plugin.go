@@ -26,6 +26,7 @@ type Plugin struct {
 func (p *Plugin) Run(ctx context.Context) error {
 	err := (&databaseclusters.Reconciler{
 		Client:     p.Manager.GetClient(),
+		Scheme:     p.Manager.GetScheme(),
 		Controller: p.Controllers.DatabaseController,
 	}).Setup(p.Manager)
 	if err != nil {

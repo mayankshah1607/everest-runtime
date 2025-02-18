@@ -1,6 +1,7 @@
 package main
 
 import (
+	chkv1 "github.com/altinity/clickhouse-operator/pkg/apis/clickhouse-keeper.altinity.com/v1"
 	chv1 "github.com/altinity/clickhouse-operator/pkg/apis/clickhouse.altinity.com/v1"
 	"github.com/mayankshah1607/everest-runtime/internal/providers/clickhouse"
 	"github.com/mayankshah1607/everest-runtime/pkg/apis/v2alpha1"
@@ -44,4 +45,5 @@ func main() {
 func init() {
 	v2alpha1.AddToScheme(scheme)
 	chv1.AddToScheme(scheme)
+	chkv1.AddToScheme(scheme)
 }
