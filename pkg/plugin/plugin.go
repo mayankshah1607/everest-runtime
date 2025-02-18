@@ -32,6 +32,10 @@ func (p *Plugin) Run(ctx context.Context) error {
 		return err
 	}
 
+	// TODO: Add DatabaseClusterBackup reconciler
+	// TODO: Add DatabaseClusterRestore reconciler
+	// TODO: Update Plugin status with capabilities (there's no Plugin CRD in this poc yet)
+
 	log.Println("Starting manager")
 	utilruntime.Must(clientgoscheme.AddToScheme(p.Manager.GetScheme()))
 	return p.Manager.Start(ctx)
