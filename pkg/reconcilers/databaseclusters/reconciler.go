@@ -8,7 +8,6 @@ import (
 	"github.com/mayankshah1607/everest-runtime/pkg/controller"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -37,7 +36,10 @@ func (r *Reconciler) Setup(mgr manager.Manager) error {
 		Watches(
 			&v2alpha1.DatabaseCluster{},
 			&handler.EnqueueRequestForObject{},
-			builder.WithPredicates(newDatabaseClusterPredicates(r.pluginName))).
+			// We will filter out objects based on the Plugin name,
+			// but atm we don't have the Plugin CRD, so we will just handle everything.
+			// builder.WithPredicates(newDatabaseClusterPredicates(r.pluginName)),
+		).
 		Named("DatabaseCluster").
 		Build(r)
 	if err != nil {
@@ -73,6 +75,13 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		return ctrl.Result{Requeue: !done}, nil
 	}
 
+	// aggregate the pod details including defaults from the DatabaseClusterDefinition
+	// and set the internal field.
+	if err := r.attachPodInfo(ctx, db); err != nil {
+		log.Error(err, "attachPodInfo failed")
+		return ctrl.Result{}, err
+	}
+
 	rr, err := r.Controller.Reconcile(ctx, r, db)
 	if err != nil {
 		log.Error(err, "Reconcile failed")
@@ -84,6 +93,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		log.Error(err, "GetStatus failed")
 		return ctrl.Result{}, err
 	}
+
 	db.Status = st
 	if err := r.Status().Update(ctx, db); err != nil {
 		log.Error(err, "Status update failed")
@@ -92,14 +102,9 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	return rr, nil
 }
 
-const (
-	keyUser     = "user"
-	keyPassword = "password"
-	adminUser   = "admin"
-)
-
-// TODO: we don't have a mechanism yet to properly wire up everything,
-// so we'll just hardcode the reference to the definition for now.
+// We don't have a mechanism to find the DBDefinition for the DatabaseCluster.
+// The Plugin CRD will manage this for us, but we don't have it yet, so we shall
+// just hard-code references for now.
 const dbcDefRef = "clickhouse-definition"
 
 func (r *Reconciler) attachPodInfo(ctx context.Context, db *v2alpha1.DatabaseCluster) error {
@@ -111,12 +116,12 @@ func (r *Reconciler) attachPodInfo(ctx context.Context, db *v2alpha1.DatabaseClu
 		return err
 	}
 
-	for _, cmp := range db.Spec.Components {
+	for i, cmp := range db.Spec.Components {
 		cmpDef, ok := def.Spec.Definitions.Components[cmp.Type]
 		if !ok {
 			return fmt.Errorf("component definition not found for %s", cmp.Type)
 		}
-		cmp.PodSpec = cmpDef.Defaults
+		db.Spec.Components[i].PodSpec = cmpDef.Defaults
 		// TODO: once we have ComponentVersions, we will set the Image from there.
 	}
 	return nil

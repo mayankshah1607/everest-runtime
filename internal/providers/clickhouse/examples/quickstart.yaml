@@ -1,0 +1,35 @@
+apiVersion: everest.percona.com/v2alpha1
+kind: DatabaseClusterDefinition
+metadata:
+  name: clickhouse-definition
+spec:
+  definitions:
+    global:
+      openAPIV3Schema: {}
+    components:
+      clickhouse:
+        openAPIV3Schema: {}
+        defaults:
+          annotations:
+            test-annot: "true"
+          labels:
+            test-label: "true"
+          container:
+            image: "clickhouse/clickhouse-server:23.8"
+            name: clickhouse
+---
+apiVersion: everest.percona.com/v2alpha1
+kind: DatabaseCluster
+metadata:
+  name: clickhouse-test-cluster
+spec:
+  plugin: clickhouse
+  global: {}
+  components:
+  - name: chc
+    type: clickhouse
+    replicas: 1
+    version: "23.8" # NOOP for now
+    storage:
+      size: 1Gi
+

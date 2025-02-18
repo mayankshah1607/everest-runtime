@@ -7,6 +7,7 @@ import (
 	"github.com/mayankshah1607/everest-runtime/pkg/plugin"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 )
 
 var scheme = runtime.NewScheme()
@@ -18,6 +19,12 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+
+	opts := zap.Options{
+		Development: true,
+	}
+
+	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
 	chProv := clickhouse.New(scheme)
 

@@ -5,11 +5,12 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/AlekSi/pointer"
 	chv1 "github.com/altinity/clickhouse-operator/pkg/apis/clickhouse.altinity.com/v1"
 	"github.com/mayankshah1607/everest-runtime/pkg/apis/v2alpha1"
 	"github.com/mayankshah1607/everest-runtime/pkg/controller"
 	corev1 "k8s.io/api/core/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -37,21 +38,35 @@ func (p *databaseClusterImpl) GetSources(m manager.Manager) []source.Source {
 }
 
 func (p *databaseClusterImpl) Reconcile(ctx context.Context, c client.Client, db *v2alpha1.DatabaseCluster) (reconcile.Result, error) {
-	chi := &chv1.ClickHouseInstallation{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      db.GetName(),
-			Namespace: db.GetNamespace(),
-		},
+	desired, err := p.getDesiredCHI(db)
+	if err != nil {
+		return reconcile.Result{}, err
 	}
+
 	if err := createDefaultUserSecret(ctx, c, db); err != nil {
 		return reconcile.Result{}, err
 	}
-	if _, err := controllerutil.CreateOrUpdate(ctx, c, chi, func() error {
-		return p.reconcileCHI(ctx, c, db, chi)
-	}); err != nil {
+
+	// We should NOT use controllerutil.CreateOrUpdate here
+	// because chv1.ClickHouseInstallation contains private fields.
+	// controllerutil.CreateOrUpdate uses the DeepCopy() method which panics
+	// when it encounters private fields.
+
+	existing := &chv1.ClickHouseInstallation{}
+	if err := c.Get(ctx, types.NamespacedName{
+		Name:      db.GetName(),
+		Namespace: db.GetNamespace(),
+	}, existing); err != nil {
+		if k8serrors.IsNotFound(err) {
+			return reconcile.Result{}, c.Create(ctx, desired)
+		}
 		return reconcile.Result{}, err
 	}
-	return reconcile.Result{}, nil
+
+	existing.Spec = desired.Spec
+	existing.ObjectMeta.SetLabels(desired.ObjectMeta.GetLabels())
+	existing.ObjectMeta.SetAnnotations(desired.ObjectMeta.GetAnnotations())
+	return reconcile.Result{}, c.Update(ctx, existing)
 }
 
 func (p *databaseClusterImpl) Delete(context.Context, client.Client, *v2alpha1.DatabaseCluster) (bool, error) {
@@ -96,21 +111,61 @@ const (
 	defaultPodTemplateName = "clickhouse-default"
 )
 
-func (p *databaseClusterImpl) reconcileCHI(
-	ctx context.Context,
-	c client.Client,
-	db *v2alpha1.DatabaseCluster,
-	chi *chv1.ClickHouseInstallation,
-) error {
-	var clusterCmp *v2alpha1.ComponentSpec
-	// TODO: we need to validate somehow before even creating this object.
-	if cmps := db.GetComponentsOfType("clickhouse"); len(cmps) != 1 {
-		return errors.New("invalid number of clickhouse components")
-	} else {
-		clusterCmp = &cmps[0]
+func (p *databaseClusterImpl) getDesiredCHI(db *v2alpha1.DatabaseCluster) (*chv1.ClickHouseInstallation, error) {
+	chi := &chv1.ClickHouseInstallation{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      db.GetName(),
+			Namespace: db.GetNamespace(),
+		},
+		Spec: chv1.ChiSpec{
+			Configuration: chv1.NewConfiguration(),
+			Templates:     chv1.NewTemplates(),
+		},
 	}
 
-	// configure users.
+	clusterCmp, err := p.getCHCmp(db)
+	if err != nil {
+		return nil, err
+	}
+
+	p.configureUsers(chi, db)
+	cluster := p.configureCluster(clusterCmp)
+	p.configureVolumeClaims(chi, clusterCmp)
+	p.configurePodTemplate(chi, clusterCmp)
+
+	cluster.Templates = chv1.NewTemplatesList()
+	cluster.Templates.PodTemplate = defaultPodTemplateName
+	chi.Spec.Configuration.Clusters = []*chv1.Cluster{cluster}
+
+	if err := controllerutil.SetControllerReference(db, chi, p.schema); err != nil {
+		return nil, err
+	}
+
+	return chi, nil
+}
+
+func (p *databaseClusterImpl) initializeCHI(db *v2alpha1.DatabaseCluster) *chv1.ClickHouseInstallation {
+	return &chv1.ClickHouseInstallation{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      db.GetName(),
+			Namespace: db.GetNamespace(),
+		},
+		Spec: chv1.ChiSpec{
+			Configuration: chv1.NewConfiguration(),
+			Templates:     chv1.NewTemplates(),
+		},
+	}
+}
+
+func (p *databaseClusterImpl) getCHCmp(db *v2alpha1.DatabaseCluster) (*v2alpha1.ComponentSpec, error) {
+	cmps := db.GetComponentsOfType("clickhouse")
+	if len(cmps) != 1 {
+		return nil, errors.New("invalid number of clickhouse components")
+	}
+	return &cmps[0], nil
+}
+
+func (p *databaseClusterImpl) configureUsers(chi *chv1.ClickHouseInstallation, db *v2alpha1.DatabaseCluster) {
 	userSetting := chv1.NewSettingSource(&chv1.SettingSource{
 		ValueFrom: &chv1.DataSource{
 			SecretKeyRef: &corev1.SecretKeySelector{
@@ -123,52 +178,49 @@ func (p *databaseClusterImpl) reconcileCHI(
 	})
 	chi.Spec.Configuration.Users = chv1.NewSettings()
 	chi.Spec.Configuration.Users.Set(fmt.Sprintf("%s/password", defaultUser), userSetting)
+}
 
+func (p *databaseClusterImpl) configureCluster(clusterCmp *v2alpha1.ComponentSpec) *chv1.Cluster {
 	cluster := &chv1.Cluster{
 		Name: clusterCmp.Name,
 	}
 
-	if clusterCmp.Shards != nil {
-		cluster.Layout.ShardsCount = int(*clusterCmp.Shards)
-	}
-	if clusterCmp.Replicas != nil {
-		cluster.Layout.ReplicasCount = int(*clusterCmp.Replicas)
+	if clusterCmp.Shards != nil || clusterCmp.Replicas != nil {
+		cluster.Layout = &chv1.ChiClusterLayout{}
+		if clusterCmp.Shards != nil {
+			cluster.Layout.ShardsCount = int(*clusterCmp.Shards)
+		}
+		if clusterCmp.Replicas != nil {
+			cluster.Layout.ReplicasCount = int(*clusterCmp.Replicas)
+		}
 	}
 
-	// configure volume claims
-	vcts := []corev1.PersistentVolumeClaim{}
-	vcts = append(vcts, corev1.PersistentVolumeClaim{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: dataVolumeName,
-		},
-		Spec: corev1.PersistentVolumeClaimSpec{
-			AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
-			Resources: corev1.VolumeResourceRequirements{
-				Requests: corev1.ResourceList{
-					corev1.ResourceStorage: clusterCmp.Storage.Size,
-				},
+	return cluster
+}
+
+func (p *databaseClusterImpl) configureVolumeClaims(chi *chv1.ClickHouseInstallation, clusterCmp *v2alpha1.ComponentSpec) {
+	vcts := []corev1.PersistentVolumeClaim{
+		{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: dataVolumeName,
 			},
-			StorageClassName: pointer.To(clusterCmp.Storage.StorageClass),
+			Spec: corev1.PersistentVolumeClaimSpec{
+				AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
+				Resources: corev1.VolumeResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceStorage: clusterCmp.Storage.Size,
+					},
+				},
+				StorageClassName: clusterCmp.Storage.StorageClass,
+			},
 		},
-	})
+	}
 	vcts = append(vcts, clusterCmp.PodSpec.AdditionalVolumeClaimTemplates...)
 	chi.Spec.Templates.VolumeClaimTemplates = intoCHVolumeClaim(vcts)
+}
 
-	// configure the default container.
-	var container corev1.Container
-	if clusterCmp.PodSpec.Container != nil {
-		container = *clusterCmp.PodSpec.Container
-	}
-	if container.Name == "" {
-		container.Name = "clickhouse"
-	}
-	if clusterCmp.Image != "" {
-		container.Image = clusterCmp.Image
-	}
-	container.VolumeMounts = append(container.VolumeMounts, corev1.VolumeMount{
-		Name:      dataVolumeName,
-		MountPath: "/var/lib/clickhouse",
-	})
+func (p *databaseClusterImpl) configurePodTemplate(chi *chv1.ClickHouseInstallation, clusterCmp *v2alpha1.ComponentSpec) {
+	container := p.configureContainer(clusterCmp)
 	containers := []corev1.Container{container}
 	containers = append(containers, clusterCmp.PodSpec.Sidecars...)
 
@@ -184,12 +236,24 @@ func (p *databaseClusterImpl) reconcileCHI(
 			},
 		},
 	}
+}
 
-	if err := controllerutil.SetControllerReference(db, chi, p.schema); err != nil {
-		return err
+func (p *databaseClusterImpl) configureContainer(clusterCmp *v2alpha1.ComponentSpec) corev1.Container {
+	var container corev1.Container
+	if clusterCmp.PodSpec.Container != nil {
+		container = *clusterCmp.PodSpec.Container
 	}
-
-	return nil
+	if container.Name == "" {
+		container.Name = "clickhouse"
+	}
+	if clusterCmp.Image != "" {
+		container.Image = clusterCmp.Image
+	}
+	container.VolumeMounts = append(container.VolumeMounts, corev1.VolumeMount{
+		Name:      dataVolumeName,
+		MountPath: "/var/lib/clickhouse",
+	})
+	return container
 }
 
 func intoCHVolumeClaim(in []corev1.PersistentVolumeClaim) []chv1.VolumeClaimTemplate {

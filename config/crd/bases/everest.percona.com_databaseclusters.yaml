@@ -45,7 +45,10 @@ spec:
                 items:
                   properties:
                     '-':
-                      description: 'INTERNAL FIELDS: these are not part of the CRD.'
+                      description: |-
+                        Internal field, this is not provided in the CRD.
+                        This field is automatically populated during runtime.
+                        Contains aggregated pod spec for this componen.
                       properties:
                         additionalVolumeClaimTemplates:
                           items:
@@ -5176,6 +5179,7 @@ spec:
                           type: array
                       type: object
                     config:
+                      description: Config specifies the component specific configuration.
                       properties:
                         configMapRef:
                           description: |-
@@ -5213,16 +5217,27 @@ spec:
                           x-kubernetes-map-type: atomic
                       type: object
                     customSpec:
+                      description: |-
+                        CustomSpec provides an API for customising this component.
+                        The API is defined in the DatabaseCluserDefinition.
                       type: object
                       x-kubernetes-preserve-unknown-fields: true
                     image:
+                      description: |-
+                        Image specifies an override for the image to use.
+                        When unspecified, it is autmatically set from the ComponentVersions
+                        based on the Version specified.
                       type: string
                     name:
+                      description: Name of the component.
                       type: string
                     replicas:
+                      description: Replicas specifies the number of replicas for this
+                        component.
                       format: int32
                       type: integer
                     resources:
+                      description: Resources requirements for this component.
                       properties:
                         cpu:
                           anyOf:
@@ -5238,9 +5253,14 @@ spec:
                           x-kubernetes-int-or-string: true
                       type: object
                     shards:
+                      description: Shards specifies the number of shards for this
+                        component.
                       format: int32
                       type: integer
                     storage:
+                      description: |-
+                        Storage requirements for this component.
+                        For stateless components, this is an optional field.
                       properties:
                         size:
                           anyOf:
@@ -5252,8 +5272,10 @@ spec:
                           type: string
                       type: object
                     type:
+                      description: Type of the component from DatabaseClusterDefinition.
                       type: string
                     version:
+                      description: Version of the component from ComponentVersions.
                       type: string
                   type: object
                 type: array
@@ -5265,12 +5287,46 @@ spec:
             type: object
           status:
             properties:
+              components:
+                description: Components is the status of the components in the database
+                  cluster.
+                items:
+                  properties:
+                    pods:
+                      items:
+                        description: |-
+                          LocalObjectReference contains enough information to let you locate the
+                          referenced object inside the same namespace.
+                        properties:
+                          name:
+                            default: ""
+                            description: |-
+                              Name of the referent.
+                              This field is effectively required, but due to backwards compatibility is
+                              allowed to be empty. Instances of this type with an empty value here are
+                              almost certainly wrong.
+                              More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                            type: string
+                        type: object
+                        x-kubernetes-map-type: atomic
+                      type: array
+                    ready:
+                      format: int32
+                      type: integer
+                    state:
+                      type: string
+                    total:
+                      format: int32
+                      type: integer
+                  type: object
+                type: array
               connectionURL:
+                description: ConnectionURL is the URL to connect to the database cluster.
                 type: string
               credentialSecretRef:
                 description: |-
-                  LocalObjectReference contains enough information to let you locate the
-                  referenced object inside the same namespace.
+                  CredentialSecretRef is a reference to the secret containing the credentials.
+                  This Secret contains the keys `username` and `password`.
                 properties:
                   name:
                     default: ""
@@ -5284,6 +5340,7 @@ spec:
                 type: object
                 x-kubernetes-map-type: atomic
               phase:
+                description: Phase of the database cluster.
                 type: string
             type: object
         type: object
