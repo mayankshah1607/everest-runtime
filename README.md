@@ -25,4 +25,9 @@ kubectl apply -f https://raw.githubusercontent.com/Altinity/clickhouse-operator/
 go run main.go
 ```
 
+4. In another terminal, run the examples
+```bash
+kubectl apply -f internal/providers/clickhouse/examples/quickstart.yaml
+```
+
 > Make sure your $KUBECONFIG points to a running cluster.
