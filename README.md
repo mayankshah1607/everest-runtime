@@ -12,7 +12,7 @@ The CH plugin supports:
 
 1. Apply CRDs:
 ```bash
-kubectl apply -f config/crds/bases
+kubectl apply -f config/crd/bases
 ```
 
 2. Install ClickHouse operator:
