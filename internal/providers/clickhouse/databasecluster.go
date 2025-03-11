@@ -40,6 +40,7 @@ func (p *databaseClusterImpl) GetSources(m manager.Manager) []source.Source {
 		m.GetCache(),
 		&chv1.ClickHouseInstallation{},
 		&handler.TypedEnqueueRequestForObject[*chv1.ClickHouseInstallation]{}))
+
 	srcs = append(srcs, source.Kind(
 		m.GetCache(),
 		&chkv1.ClickHouseKeeperInstallation{},
@@ -48,6 +49,12 @@ func (p *databaseClusterImpl) GetSources(m manager.Manager) []source.Source {
 }
 
 func (p *databaseClusterImpl) Reconcile(ctx context.Context, c client.Client, db *v2alpha1.DatabaseCluster) (reconcile.Result, error) {
+	// in this PoC, we are providing the user info thorugh a Secret.
+	// But some operators support fetching users from external sources like Vault.
+	if err := createDefaultUserSecret(ctx, c, db); err != nil {
+		return reconcile.Result{}, err
+	}
+
 	if done, err := p.reconcileClickhouseKeeper(ctx, c, db); err != nil {
 		return reconcile.Result{}, err
 	} else if !done {
@@ -158,12 +165,6 @@ func (p *databaseClusterImpl) reconcileClickhouse(ctx context.Context, c client.
 		return err
 	}
 
-	// in this PoC, we are providing the user info thorugh a Secret.
-	// But some operators support fetching users from external sources like Vault.
-	if err := createDefaultUserSecret(ctx, c, db); err != nil {
-		return err
-	}
-
 	// We should NOT use controllerutil.CreateOrUpdate here
 	// because chv1.ClickHouseInstallation contains private fields.
 	// controllerutil.CreateOrUpdate uses the DeepCopy() method which panics
@@ -189,6 +190,7 @@ func (p *databaseClusterImpl) reconcileClickhouse(ctx context.Context, c client.
 func (p *databaseClusterImpl) Delete(context.Context, client.Client, *v2alpha1.DatabaseCluster) (bool, error) {
 	return false, nil
 }
+
 func (p databaseClusterImpl) GetStatus(ctx context.Context, c client.Client, db *v2alpha1.DatabaseCluster) (v2alpha1.DatabaseClusterStatus, error) {
 	chi := &chv1.ClickHouseInstallation{}
 	if err := c.Get(ctx, types.NamespacedName{
@@ -196,7 +198,7 @@ func (p databaseClusterImpl) GetStatus(ctx context.Context, c client.Client, db 
 		Namespace: db.GetNamespace(),
 	}, chi,
 	); err != nil {
-		return v2alpha1.DatabaseClusterStatus{}, err
+		return v2alpha1.DatabaseClusterStatus{}, client.IgnoreNotFound(err)
 	}
 
 	sts := v2alpha1.DatabaseClusterStatus{
