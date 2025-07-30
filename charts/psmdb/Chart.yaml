@@ -1,0 +1,6 @@
+apiVersion: v2
+name: psmdb
+description: A Helm chart for installing the PSMDB Operator plugin for Everest
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

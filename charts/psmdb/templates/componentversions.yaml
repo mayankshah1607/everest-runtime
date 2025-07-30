@@ -1,0 +1,38 @@
+apiVersion: everest.percona.com/v2alpha1
+kind: ComponentVersions
+metadata:
+  name: percona-server-mongodb-operator
+  labels:
+    everest.percona.com/database-engine: percona-server-mongodb-operator
+spec:
+  components:
+    mongod:
+    - version: 6.0.15-12
+      image: percona/percona-server-mongodb:6.0.15-12
+    - version: 6.0.16-13
+      image: percona/percona-server-mongodb:6.0.16-13
+    - version: 6.0.18-15
+      image: percona/percona-server-mongodb:6.0.18-15-multi
+    - version: 6.0.19-16
+      image: percona/percona-server-mongodb:6.0.19-16-multi
+    - version: 6.0.21-18
+      image: percona/percona-server-mongodb:6.0.21-18
+    - version: 7.0.12-7
+      image: percona/percona-server-mongodb:7.0.12-7
+    - version: 7.0.14-8
+      image: percona/percona-server-mongodb:7.0.14-8-multi
+    - version: 7.0.15-9
+      image: percona/percona-server-mongodb:7.0.15-9-multi
+    - version: 7.0.18-11
+      image: percona/percona-server-mongodb:7.0.18-11
+    - version: 8.0.4-1
+      image: percona/percona-server-mongodb:8.0.4-1-multi
+    - version: 8.0.8-3
+      image: percona/percona-server-mongodb:8.0.8-3
+      default: true
+    backup:
+    - version: 2.9.1
+      image: percona/percona-server-mongodb-backup:2.9.1
+    pmm:
+    - version: 2.44.1
+      image: percona/pmm-server:2.44.1

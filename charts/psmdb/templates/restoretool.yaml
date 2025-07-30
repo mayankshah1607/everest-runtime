@@ -1,0 +1,10 @@
+apiVersion: everest.percona.com/v2alpha1
+kind: RestoreTool
+metadata:
+  name: everest-psmdb-operator
+spec:
+  job:
+    image: percona/everest-operator:latest
+    command: ["./backup-tool.sh"]
+  permissions: {}
+  clusterPermissions: {}

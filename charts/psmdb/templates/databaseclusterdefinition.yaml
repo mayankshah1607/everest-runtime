@@ -1,0 +1,40 @@
+apiVersion: everest.percona.com/v2alpha1
+kind: DatabaseClusterDefinition
+metadata:
+  name: percona-server-mongodb-operator
+  labels:
+    everest.percona.com/database-engine: percona-server-mongodb-operator
+spec:
+  # additional fields that are not component specific.
+  additionalFields:
+    openAPIV3Schema: {}
+    
+  components:
+    mongod:
+      # define additional fields for mongod component
+      additionalFields:
+        openAPIV3Schema:
+          sharding:
+            type: object
+            description: Sharding configuration for MongoDB
+            properties:
+              enabled:
+                type: boolean
+              shards:
+                type: integer
+              configServers:
+                type: object
+                properties:
+                  replicas:
+                    type: integer
+                    
+    backup:
+      openAPIV3Schema: {}
+      uiHints:
+        hiddenFields:
+        - replicas
+        - service
+      
+    pmm:
+      openAPIV3Schema: {}
+      optional: true
