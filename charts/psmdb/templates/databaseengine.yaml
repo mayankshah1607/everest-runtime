@@ -3,44 +3,82 @@ kind: DatabaseEngine
 metadata:
   name: percona-server-mongodb-operator
 spec:
+  # Refernce to the DBC controller that reconciles DBC of this engine type.
   controllorRef:
-    apiVersion: apps/v1
-    kind: Deployment
+    apiVersion: apps/v1 kind: Deployment
     name: percona-server-mongodb-operator
     namespace: everest-system
-  databaseClusterDefinition: percona-server-mongodb-operator
-  componentVersions: percona-server-mongodb-operator
+  
+  additionalFields:
+    openAPIV3Schema:
+      allowUnsafeFlags:
+        type: boolean
+      initImage:
+        type: string
 
-# status:
-#   state: installed # upgrading, failed
-#   message: ""
-#   components:
-#     mongod:
-#     - version: 6.0.15-12
-#       image: percona/percona-server-mongodb:6.0.15-12
-#     - version: 6.0.16-13
-#       image: percona/percona-server-mongodb:6.0.16-13
-#     - version: 6.0.18-15
-#       image: percona/percona-server-mongodb:6.0.18-15-multi
-#     - version: 6.0.19-16
-#       image: percona/percona-server-mongodb:6.0.19-16-multi
-#     - version: 6.0.21-18
-#       image: percona/percona-server-mongodb:6.0.21-18
-#     - version: 7.0.12-7
-#       image: percona/percona-server-mongodb:7.0.12-7
-#     - version: 7.0.14-8
-#       image: percona/percona-server-mongodb:7.0.14-8-multi
-#     - version: 7.0.15-9
-#       image: percona/percona-server-mongodb:7.0.15-9-multi
-#     - version: 7.0.18-11
-#       image: percona/percona-server-mongodb:7.0.18-11
-#     - version: 8.0.4-1
-#       image: percona/percona-server-mongodb:8.0.4-1-multi
-#     - version: 8.0.8-3
-#       image: percona/percona-server-mongodb:8.0.8-3
-#     backup:
-#     - version: 2.9.1
-#       image: percona/percona-server-mongodb-backup:2.9.1
-#     pmm:
-#     - version: 2.44.1
-#       image: percona/pmm-server:2.44.1
+  # Defines a list of components for this engine.
+  components:
+    mongod:
+      versions:
+        - version: 6.0.19-16
+          image: percona/percona-server-mongodb:6.0.19-16-multi
+        - version: 6.0.21-18
+          image: percona/percona-server-mongodb:6.0.21-18
+        - version: 7.0.18-11
+          image: percona/percona-server-mongodb:7.0.18-11
+        - version: 8.0.4-1
+          image: percona/percona-server-mongodb:8.0.4-1-multi
+        - version: 8.0.8-3
+          image: percona/percona-server-mongodb:8.0.8-3
+          default: true
+    
+    backup:
+      versions:
+        - version: 2.9.1
+          image: percona/percona-server-mongodb-backup:2.9.1
+
+    pmm:
+      additionalFields:
+        openAPIV3Schema:
+          serverHost:
+            type: string
+          credentialSecretName:
+            type: string
+      versions:
+        - version: 2.44.1
+          image: percona/pmm-server:2.44.1
+  
+  topologies:
+    standard:
+      componentInstances:
+        engine:
+          type: mongod
+          defaults:
+            replicas: 3
+        backupAgent:
+          type: backup
+        monitoring: 
+          type: pmm
+          optional: true
+
+    sharded:
+      # Topology specific settings
+      additionalFields:
+        openAPIV3Schema:
+          shards:
+            type: integer
+            default: 3
+      componentInstances:
+        engine:
+          type: mongod
+          defaults:
+            replicas: 3
+        proxy:
+          type: mongod
+        configServer:
+          type: mongod
+        backupAgent:
+          type: backup
+        monitoring: 
+          type: pmm
+          optional: true

@@ -5,52 +5,35 @@ metadata:
   namespace: everest
 spec:
   engine: percona-server-mongodb-operator
-  podSchedulingPolicy: my-psmdb-psp
-  
-  # ... additional fields defined in DatabaseClusterDefinition
-  
-
-  allowUnsafeConfigurations: true
-  
-  components:
-    mongod:
-      type: mongod
-      version: 8.0.8-3
-      replicas: 3
-      storage:
-        class: standard
-        size: 10Gi
-      resources:
-        requests:
-          cpu: 2
-          memory: 8Gi
-        limits:
-          cpu: 2
-          memory: 8Gi
-      config: |
-        ... component specific configuration ...
-        
-      # custom fields from DatabaseClusterDefinition
-      sharding:
-        enabled: true
-        shards: 3
-        configServers:
-          replicas: 3
-          
-    backup:
-      type: backup
-      version: "" # uses default since unspecified
-    
-    monitoring:
-      type: pmm
-      version: "" # uses default since unspecified
-      resources:
-        requests:
-          cpu: 500m
-          memory: 2Gi
-        limits:
-          cpu: 500m
-          memory: 2Gi
-      
-      # custom fields from DatabaseClusterDefinition
-      serverHost: http://pmm-server:8080
+  params: # global params
+    allowUnsafeFlags: true
+  topology:
+    type: sharded # if none, use the default
+    params:       # topology specific params
+      shards: 3
+    components:
+      mongod:
+        version: 8.0.8-3
+      backup: 
+        version: 2.9.1
+      monitoring:
+        version: 2.9.1
+    componentInstances:
+      engine:
+        replicas: 3
+        storage:
+          size: 10Gi
+          class: standard
+      proxy:
+        replicas: 3
+        service:
+          exposeType: LoadBalancer
+      configServer:
+        replicas: 3
+      backupAgent:
+        replicas: 1
+      monitoring:
+        replicas: 1
+        params:     # component specific params
+          serverHost: pmm-server
+          credentialSecretName: pmm-secret
