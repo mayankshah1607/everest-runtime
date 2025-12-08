@@ -1,0 +1,127 @@
+# A reconciler should be able to do these 5 tasks:
+# 1. Watch resources and trigger reconciliation
+# 2. Validate DatabaseCluster objects
+# 3. Execute reconciliation with steps (create/update/patch)
+# 4. Sync the status of the DatabaseCluster
+# 5. Cleanup resources when DatabaseCluster is deleted
+# 
+apiVersion: everest.percona.com/v2alpha1
+kind: DatabaseEngineController
+metadata:
+  name: my-pg-controller
+spec:
+  
+  watches:
+    owns:
+    - kind: PerconaPGCluster
+      apiVersion: pgv2.percona.com/v1alpha1
+    custom:
+    - kind: SomeObjectKind
+      apiVersion: someapi.percona.com/v1alpha1
+      labelSelector: {}
+      requestMapping:
+        name:
+          fieldPath: metadata.name
+        namespace: # if unspecified, same as object
+          fieldPath: metadata.namespace
+        
+        cue:
+          # configMapSource:
+          #   name: cm-name
+          #   key: mapping.cue
+          script: |
+            req = {
+              "name": object.metadata.name,
+              "namespace": object.metadata.namespace ?? "default"
+            }
+            
+        # or use LUA 
+        # lua:
+        #   # configMapSource:
+        #   #   name: cm-name
+        #   #   key: mapping.lua
+        #   script: |
+        #     let req = []
+        #     req.push({
+        #       name = object.metadata.name,
+        #       namespace = object.metadata.namespace or "default"
+        #     })
+        #     return req
+          
+        # or use JSONNET
+        # jsonnet:
+        #   script: |
+        #     {
+        #       name: object.metadata.name,
+        #       namespace: std.objectHas(object.metadata, 'namespace') ? object.metadata.namespace : 'default'
+        #     }
+    
+  templates:
+  - name: pgCluster
+    # configMapSource:
+    #   name: cm-name
+    #   key: pgTemplate.yaml.tpl 
+    template: |
+      apiVersion: pgv2.percona.com/v1alpha1
+      kind: PerconaPGCluster
+      metadata:
+        name: {{ .DB.Name }}
+        namespace: {{ .DB.Namespace }}
+      spec: {}
+      
+  plan:
+    
+    # use either webhook or steps, not both.
+    sync:
+      webhook: webhookSvc.myNamespace.svc/v1/sync
+      
+      steps:
+      - id: create-pg-cluster
+        description: Create a PostgreSQL cluster
+        template: pgCluster
+        strategy: apply # patch | none
+
+    
+    cleanup:
+      webhook: webhookSvc.myNamespace.svc/v1/cleanup
+
+      # A job can also be used for performing cleanup 
+      job:
+        image: percona/pg-cleanup:latest
+    
+    validation:
+    - name: Some validation rule
+      celExpr: ""
+    - name: Another complex validation rule
+      webhook:
+        url: webhookSvc.myNamespace.svc/v1/validate-something
+      
+    statusMappings:
+      inputs:
+      - kind: PerconaPGCluster
+        apiVersion: pgv2.percona.com/v1alpha1
+        name: "{{ .DB.Name }}"
+        namespace: "{{ .DB.Namespace }}"
+        referenceName: pgCluster
+      - kind: Secret
+        apiVersion: v1
+        name: "{{ .DB.Name }}-pg-credentials"
+        namespace: "{{ .DB.Namespace }}"
+        referenceName: pgCredentialsSecret
+      phase:
+        pending:
+          celExpr: pgCluster.status.phase == "Pending"
+        running:
+          celExpr: pgCluster.status.phase == "Running"
+        failed:
+          celExpr: pgCluster.status.phase == "Failed"
+      connectionURL:
+        celExpr: pgCluster.status.host
+      credentials:
+        username:
+          celExpr: pgCredentialsSecret.data.username
+        password:
+          celExpr: pgCredentialsSecret.data.password
+
+
+          

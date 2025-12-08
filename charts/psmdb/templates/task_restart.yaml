@@ -1,0 +1,26 @@
+apiVersion: everest.percona.com/v2alpha1
+kind: TaskDefinition
+metadata:
+  name: restart-psmdb-cluster
+spec:
+  forProviders:
+  - psmdb
+  description: Restart the PSMDB Cluster
+  paramsConfig:
+    openAPIV3Schema:
+      updateCRVersion:
+        type: boolean
+        description: "If set, update the CRVersion of the PSMDBCluster CR"
+        default: false
+  image: percona/psmdb-restart-task:latest
+---
+apiVersion: everest.percona.com/v2alpha1
+kind: Task
+metadata:
+  generateName: task-restart-
+  namespace: everest
+spec:
+  type: restart-psmdb-cluster
+  clusterName: psmdb-cluster
+  params:
+    updateCRVersion: true

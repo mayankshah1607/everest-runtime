@@ -1,0 +1,23 @@
+apiVersion: percona.everest.com/v2alpha1
+kind: ComponentVersions
+metadata:
+  name: pxc-components
+  namespace: everest-system
+spec:
+  components:
+    engine:
+    - version: 8.0.3
+      image: percona/percona-xtradb-cluster:8.0.3
+    - version: 8.0.4
+      image: percona/percona-xtradb-cluster:8.0.4
+    - version: 8.0.5
+      image: percona/percona-xtradb-cluster:8.0.4
+      default: true
+    haproxy:
+    - version: 8.0.2
+      image: percona/percona-xtradb-cluster:8.0.2
+    - version: 8.0.3
+      image: percona/percona-xtradb-cluster:8.0.3
+    - version: 8.0.4
+      image: percona/percona-xtradb-cluster:8.0.4
+      default: true

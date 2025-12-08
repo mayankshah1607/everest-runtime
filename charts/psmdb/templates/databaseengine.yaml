@@ -1,23 +1,11 @@
 apiVersion: everest.percona.com/v2alpha1
-kind: DatabaseEngine
+kind: Provider
 metadata:
   name: percona-server-mongodb-operator
 spec:
-  # Refernce to the DBC controller that reconciles DBC of this engine type.
-  controllorRef:
-    apiVersion: apps/v1 kind: Deployment
-    name: percona-server-mongodb-operator
-    namespace: everest-system
-  
-  additionalFields:
-    openAPIV3Schema:
-      allowUnsafeFlags:
-        type: boolean
-      initImage:
-        type: string
-
-  # Defines a list of components for this engine.
-  components:
+  # Defines a list of component types for this provider.
+  # Each component type has a list of versions and images. 
+  componentTypes:
     mongod:
       versions:
         - version: 6.0.19-16
@@ -38,47 +26,46 @@ spec:
           image: percona/percona-server-mongodb-backup:2.9.1
 
     pmm:
-      additionalFields:
-        openAPIV3Schema:
-          serverHost:
-            type: string
-          credentialSecretName:
-            type: string
       versions:
         - version: 2.44.1
           image: percona/pmm-server:2.44.1
-  
+
+  # Defines a list of components for this provider.
+  # Each component has a type from componentTypes.
+  # One or more components may specify the same component type.
+  components:
+    engine:
+      type: mongod
+    configServer:
+      type: mongod
+    proxy:
+      type: mongod
+    backupAgent:
+      type: backup
+    monitoring:
+      type: pmm
+      
+  # Defines a list of topologies for this provider.
+  # Each topology defines the components that are supported by that topology.
   topologies:
     standard:
-      componentInstances:
+      components:
         engine:
-          type: mongod
           defaults:
             replicas: 3
         backupAgent:
-          type: backup
-        monitoring: 
-          type: pmm
+          optional: true
+        monitoring:
           optional: true
 
     sharded:
-      # Topology specific settings
-      additionalFields:
-        openAPIV3Schema:
-          shards:
-            type: integer
-            default: 3
-      componentInstances:
+      components:
         engine:
-          type: mongod
           defaults:
             replicas: 3
-        proxy:
-          type: mongod
-        configServer:
-          type: mongod
+        proxy: {}
+        configServer: {}
         backupAgent:
-          type: backup
+          optional: true
         monitoring: 
-          type: pmm
           optional: true

@@ -1,0 +1,45 @@
+apiVersion: percona.everest.com/v2alpha1
+kind: DatabaseEngine # cluster-scoped resource
+metadata:
+  name: percona-xtradb-cluster
+spec:
+  databaseEngineSource:
+    name: everest-community
+  version: 0.0.1 # latest if unspecified.
+  installContext:
+    # namespace: everest-system # namespace where the plugin resources are installed.
+    helm: # if the plugin is installed via Helm, we can provide values.
+      values: {}
+
+status:
+  installedVersion: 0.0.1
+  phase: installed # pending, installing, upgrading, error
+  backupTools:
+  - my-backup-backup 
+  - my-pg-backup
+  restoreTools:
+  - my-backup-restore
+  - my-pg-restore
+  taskDefinitions:
+  - pg-vaccuum
+  - shard-rebalance
+  componentVersions:
+    engine:
+    - version: 8.0.3
+      image: percona/percona-xtradb-cluster:8.0.3
+    - version: 8.0.4
+      image: percona/percona-xtradb-cluster:8.0.4
+    - version: 8.0.5
+      image: percona/percona-xtradb-cluster:8.0.4
+      default: true
+    haproxy:
+    - version: 8.0.2
+      image: percona/percona-xtradb-cluster:8.0.2
+    - version: 8.0.3
+      image: percona/percona-xtradb-cluster:8.0.3
+    - version: 8.0.4
+      image: percona/percona-xtradb-cluster:8.0.4
+      default: true
+  databaseClusterDefinition: percona-xtradb-cluster
+  databaseClusterControllerDeployment: percona-xtradb-cluster
+  databaseOperator: percona-xtradb-cluster-operator

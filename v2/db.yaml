@@ -1,0 +1,23 @@
+apiVersion: everest.percona.com/v2alpha1
+kind: DatabaseCluster
+metadata:
+  name: psmdb-cluster
+spec:
+  components:
+    mongod:
+      replicas: 3
+      storage:
+        size: 10Gi
+      version: 7.0.0
+      resources:
+        requests:
+          cpu: 500m
+          memory: 1Gi
+        limits:
+          cpu: 1
+          memory: 2Gi
+      
+      # additional fields
+      key1.subkey1: value1
+      key1.subkey2: value2
+      key2: value2

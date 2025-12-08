@@ -8,3 +8,19 @@ spec:
     command: ["./backup-tool.sh"]
   permissions: {}
   clusterPermissions: {}
+
+# Everest will pass a JSON payload to the above Job container.
+# The script backup-tool.sh is expected to read this JSON and perform a backup with it.
+# The JSON payload may look something as follows:
+# {
+#   "namespace": "everest",
+#   "clusterName": "psmdb-cluster",
+#   "s3": {
+#     "endpointUrl": "s3.amazonaws.com",
+#     "bucket": "my-backup-bucket",
+#     "region": "us-east-1",
+#     "accessKeyId": "qwerty",
+#     "secretAccessKey": "asdfgh",
+#   },
+#   "params": { # custom parameters ...}
+# }

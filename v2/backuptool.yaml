@@ -1,0 +1,11 @@
+apiVersion: everest.percona.com/v2alpha1
+kind: BackupTool
+metadata:
+  name: pg-operator
+spec:
+  job:
+    image: percona/my-backup-image:1.20.0
+    command: ["/bin/sh", "-c", "backup.sh"]
+  permissions: {}
+  clusterPermissions: {}
+  

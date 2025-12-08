@@ -1,0 +1,26 @@
+apiVersion: percona.everest.com/v2alpha1
+kind: DatabaseEngineSource
+metadata:
+  name: everest-community
+  namespace: everest-system
+spec:
+  # specifies the Helm repository source configuration
+  helm:
+    repo:
+      url: https://percona.github.io/percona-helm-charts/
+      auth: {} # useful for private repos
+status:
+  # specifies the list of plugins available for installation from the source.
+  availableEngines:
+  - name: percona-xtradb-cluster
+    description: Percona XtraDB Cluster plugin for Everest
+    iconURL: https://percona.com/favicon.ico
+    versions:
+    - 0.0.1
+    - 0.0.2
+  - name: percona-postgresql-server
+    description: Percona Postgres plugin for Everest
+    iconURL: https://percona.com/favicon.ico
+    versions:
+    - 0.0.1
+    - 0.0.2

@@ -1,0 +1,18 @@
+apiVersion: pmm.percona.com/v1alpha1
+kind: PMMClientProfile
+metadata:
+  name: pmm-prometheus
+spec:
+  clientMode: Exporter
+  exporter:
+    port: 9090
+    path: /metrics
+    scheme: https
+    skipTLSVerify: false
+---
+apiVersion: pmm.percona.com/v1alpha1
+kind: PMMClientProfile
+metadata:
+  name: pmm-prometheus
+spec:
+  clientMode: Exporter

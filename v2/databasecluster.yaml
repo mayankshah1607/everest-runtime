@@ -1,0 +1,33 @@
+apiVersion: everest.percona.com/v2alpha1
+kind: DatabaseCluster
+metadata:
+  name: my-cool-ch
+spec:
+  engine: percona-xtradb
+  global: {}
+
+  # Set by user 
+  podSchedulingPolicy: my-psp
+
+  components:
+  - name: chi
+    type: clickhouse
+    replicas: 1
+    version: "23.8" # NOOP for now
+    storage:
+      size: 1Gi
+    # Added by MutatingWebhook in Everest Operator
+    affinity: {}
+    antiAffinity: {}
+    customSpec:
+      zookeeper:
+        nodes:
+          - host: keeper-my-cool-ch-keeper
+            port: 2181
+  - name: chk
+    type: clickhouse-keeper
+    replicas: 1
+    version: "23.8" # NOOP for now
+    storage:
+      size: 1Gi
+

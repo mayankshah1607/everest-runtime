@@ -1,0 +1,44 @@
+apiVersion: everest.percona.com/v1alpha1
+kind: DatabaseOperator
+metadata:
+  name: pxc
+spec:
+  helm:
+    repo:
+      type: https # https, oci
+      url: https://percona.com/helm-charts
+      auth: {}
+    chart:
+      name: pxc
+      version: 1.15.0 # latest if unspecified.
+    values:
+      # ... (override default values)
+    valuesConfigMapRef: # (optional) provide values using ConfigMap.
+      # name: pxc-operator-values
+      # namespace: everest-system
+    
+  upgrades:
+    mode: manual # or automatic 
+    constraints:
+    - " == 1.16.0"
+    
+    hooks:
+      preFlight:
+        webhook:
+          url: http://my-deployment.svc.cluster.local/v1/upgrades/pre-flight
+        # job:
+        #   image: percona/my-pxc-operator-hook-checks:latest
+        #   command: ["./preflight.sh"]
+      postUpgrade:
+        webhook:
+          url: http://my-deployment.svc.cluster.local/v1/upgrades/post-upgrade
+        # job:
+        #   image: percona/my-pxc-operator-hook-checks:latest
+        #   command: ["./postupgrade.sh"]
+          
+status:
+  installedVersion: 1.15.0
+  state: installed
+  availableUpgrades:
+  - 1.16.0
+  

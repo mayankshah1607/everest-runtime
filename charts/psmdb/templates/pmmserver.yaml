@@ -1,0 +1,40 @@
+apiVersion: pmm.percona.com/v1alpha1
+kind: PMMServer
+metadata:
+  name: pmm
+  namespace: everest
+spec:
+  image: percona/pmm-server:3
+  replicas: 1
+  storage:
+    size: 200Gi
+    storageClassName: fast-ssd
+    accessModes: ["ReadWriteOnce"]
+  ingress:
+    enabled: true
+    className: nginx
+    host: pmm.example.com
+    tls:
+      enabled: true
+      secretName: pmm-tls
+  adminSecret:
+    name: pmm-secret         # contains PMM_ADMIN_PASSWORD (base64) like official Helm docs
+    key: PMM_ADMIN_PASSWORD  # same key pattern as Helm for continuity
+  resources:
+    requests:
+      cpu: "2"
+      memory: 8Gi
+    limits:
+      cpu: "4"
+      memory: 16Gi
+  security:
+    runAsNonRoot: true       # rootless by default for PMM 3
+    fsGroup: 1001
+  retention:
+    metricsDays: 14
+  service:
+    type: ClusterIP
+status:
+  url: https://pmm.example.com
+  phase: Ready
+

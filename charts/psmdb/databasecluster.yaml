@@ -4,7 +4,8 @@ metadata:
   name: psmdb-cluster
   namespace: everest
 spec:
-  engine: percona-server-mongodb-operator
+  extension: psmdb
+
   params: # global params
     allowUnsafeFlags: true
   topology:
@@ -20,20 +21,39 @@ spec:
         version: 2.9.1
     componentInstances:
       engine:
-        replicas: 3
-        storage:
-          size: 10Gi
-          class: standard
+        spec:
+          replicas: 3
+          storage:
+            size: 10Gi
+            class: standard
       proxy:
-        replicas: 3
-        service:
-          exposeType: LoadBalancer
+        spec:
+          replicas: 3
+          service:
+            exposeType: LoadBalancer
       configServer:
-        replicas: 3
+        spec:
+          replicas: 3
       backupAgent:
-        replicas: 1
+        spec:
+          replicas: 1
       monitoring:
-        replicas: 1
-        params:     # component specific params
-          serverHost: pmm-server
-          credentialSecretName: pmm-secret
+        preset: my-pmm-preset
+        # spec may be provided along with preset,
+        # in which case it overrides the presets.
+        spec:
+          serverHost: pmm-server-override
+      
+status:
+  awaitingTasks:
+  - type: restart-psmdb-cluster
+    message: "Require of 'Restart' task to be run with CRVersion update"
+    lastTransitionTime: "2025-09-03T12:00:00Z"
+    params:
+      updateCRVersion: true
+
+  conditions:
+  - type: Ready
+    status: True
+    reason: All components are healty and running
+    lastTransitionTime: "2025-09-03T12:00:00Z"

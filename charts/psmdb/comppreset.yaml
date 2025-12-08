@@ -1,0 +1,11 @@
+apiVersion: everest.percona.com/v2alpha1
+kind: ComponentPreset
+metadata:
+  name: pmm
+spec:
+  provider: psmdb # can be used only with this provider
+  component: monitoring
+  values:
+    serverHost: pmm-server
+    verifyTLS: true
+    credentialSecretName: pmm-secret
